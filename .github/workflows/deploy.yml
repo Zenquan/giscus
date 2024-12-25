@@ -1,32 +1,63 @@
-name: 部署到生产环境
+name: 部署到NAS
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     
     steps:
-    - name: 使用ssh连接部署
-      uses: appleboy/ssh-action@master
+    - name: 检出代码
+      uses: actions/checkout@v3
+      
+    - name: 设置 Node.js
+      uses: actions/setup-node@v3
       with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USERNAME }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        port: 22
+        node-version: '18'
+        
+    - name: 安装 pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+        
+    - name: 部署到NAS
+      uses: appleboy/ssh-action@master
+      env:
+        QINIU_ACCESS_KEY: ${{ secrets.QINIU_ACCESS_KEY }}
+        QINIU_SECRET_KEY: ${{ secrets.QINIU_SECRET_KEY }}
+        QINIU_BUCKET: ${{ secrets.QINIU_BUCKET }}
+        QINIU_ZONE: ${{ secrets.QINIU_ZONE }}
+        QINIU_DOMAIN: ${{ secrets.QINIU_DOMAIN }}
+      with:
+        host: ${{ secrets.CF_HOST }} # Cloudflare 穿透后的域名
+        username: ${{ secrets.NAS_USERNAME }}
+        password: ${{ secrets.NAS_PASSWORD }} # 如果使用密码认证
+        port: ${{ secrets.CF_PORT }} # Cloudflare 穿透的端口
+        envs: QINIU_ACCESS_KEY,QINIU_SECRET_KEY,QINIU_BUCKET,QINIU_ZONE,QINIU_DOMAIN
         script: |
-          cd /www/wwwroot/coco-server
+          # 创建目录（如果不存在）
+          mkdir -p ~/scripts
+          cd ~/scripts
           
-          # 清理工作目录
-          git reset --hard
-          git clean -fd
+          # 清理并更新代码
+          rm -rf ./*
           
-          # 拉取最新代码
-          git -c credential.helper= -c core.askPass= fetch https://${{ secrets.GH_TOKEN }}@github.com/Zenquan/coco-server.git master
-          git reset --hard FETCH_HEAD
+          # 复制新代码
+          git clone https://github.com/Zenquan/scripts.git .
           
-          # 安装依赖并重启
-          pnpm install --no-fund
-          npm run reload
+          # 创建环境变量文件
+          echo "QINIU_ACCESS_KEY=$QINIU_ACCESS_KEY" > .env
+          echo "QINIU_SECRET_KEY=$QINIU_SECRET_KEY" >> .env
+          echo "QINIU_BUCKET=$QINIU_BUCKET" >> .env
+          echo "QINIU_ZONE=$QINIU_ZONE" >> .env
+          echo "QINIU_DOMAIN=$QINIU_DOMAIN" >> .env
+          
+          # 安装依赖
+          pnpm install
+          
+          # 使用 pm2 运行脚本（如果已存在则重启）
+          pm2 delete sync-photos || true
+          pm2 start "pnpm start" --name sync-photos
