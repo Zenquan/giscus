@@ -1,0 +1,32 @@
+name: 部署到生产环境
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 使用ssh连接部署
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: 22
+        script: |
+          cd /www/wwwroot/coco-server
+          
+          # 清理工作目录
+          git reset --hard
+          git clean -fd
+          
+          # 拉取最新代码
+          git -c credential.helper= -c core.askPass= fetch https://${{ secrets.GH_TOKEN }}@github.com/Zenquan/coco-server.git master
+          git reset --hard FETCH_HEAD
+          
+          # 安装依赖并重启
+          pnpm install --no-fund
+          npm run reload

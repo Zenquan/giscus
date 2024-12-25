@@ -1,20 +1,30 @@
 {
-  "name": "github-actions-test",
+  "name": "scripts",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "esno src/sync-photos.ts"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Zenquan/github-actions-test.git"
+    "url": "git+https://github.com/Zenquan/scripts.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Zenquan/github-actions-test/issues"
+    "url": "https://github.com/Zenquan/scripts/issues"
   },
-  "homepage": "https://github.com/Zenquan/github-actions-test#readme"
+  "homepage": "https://github.com/Zenquan/scripts#readme",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "node-fetch": "^3.3.2",
+    "node-schedule": "^2.1.1",
+    "qiniu": "^7.14.0"
+  },
+  "devDependencies": {
+    "@types/node-schedule": "^2.1.7"
+  }
 }
